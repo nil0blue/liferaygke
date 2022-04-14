@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liferay
+  labels:
+    app: liferay
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liferay
+  template:
+    metadata:
+      labels:
+        app: liferay
+    spec:
+      containers:
+        - image: us-west1-docker.pkg.dev/dccgdemo/hello-repo/myliferay:v1
+          name: liferay
+          env:
+          - name: LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_URL
+            value: jdbc:mysql://mysql:3306/lportal?dontTrackOpenResources=true&holdResultsOpenOverStatementClose=true&useFastDateParsing=false
+          - name: LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql
+                key: password
+          ports:
+            - containerPort: 8080
+              name: liferay
+          volumeMounts:
+            - name: liferay-persistent-storage
+              mountPath: /opt/liferay/data
+      volumes:
+        - name: liferay-persistent-storage
+          persistentVolumeClaim:
+            claimName: liferay-volumeclaim

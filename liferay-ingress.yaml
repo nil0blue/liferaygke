@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: liferay-ingress
+  annotations:
+    networking.gke.io/managed-certificates: managed-cert
+    kubernetes.io/ingress.allow-http: "false" # disable HTTP
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: liferay
+            port:
+              number: 8080
+              

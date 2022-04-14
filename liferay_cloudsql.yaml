@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liferay
+  labels:
+    app: liferay
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liferay
+  template:
+    metadata:
+      labels:
+        app: liferay
+    spec:
+      containers:
+        - image: us-west1-docker.pkg.dev/dccgdemo/hello-repo/myliferay:v15
+          name: liferay
+          env:
+            - name: LIFERAY_JVM_OPTS
+              value: -Xms2048m -Xmx6144m -XX:MetaspaceSize=1024m -XX:MaxMetaspaceSize=2048m
+            - name: LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_DRIVER_UPPERCASEC_LASS_UPPERCASEN_AME
+              value: com.mysql.cj.jdbc.Driver
+            - name: LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_URL
+              value: jdbc:mysql://127.0.0.1:3306/lportal?dontTrackOpenResources=true&holdResultsOpenOverStatementClose=true&useFastDateParsing=false
+            - name: LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                    name: cloudsql-db-credentials
+                    key: username
+            - name: LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                    name: cloudsql-db-credentials
+                    key: password		
+          ports:
+            - containerPort: 8080
+              name: liferay
+          volumeMounts:
+            - name: liferay-persistent-storage
+              mountPath: /opt/liferay/data
+              subPath: data
+        # Change ${INSTANCE_CONNECTION_NAME} here to include your GCP
+        # project, the region of your Cloud SQL instance and the name
+        # of your Cloud SQL instance. The format is
+        # $PROJECT:$REGION:$INSTANCE
+        - name: cloudsql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.28.1
+          command: ["/cloud_sql_proxy",
+                    "-instances=dccgdemo:us-west1:mysql-liferay-instance1=tcp:3306", 
+                    # If running on a VPC, the Cloud SQL proxy can connect via Private IP. See:
+                    # https://cloud.google.com/sql/docs/mysql/private-ip for more info.
+                    # "-ip_address_types=PRIVATE",
+                    "-credential_file=/secrets/cloudsql/key.json"]
+          securityContext:
+            runAsUser: 2  # non-root user
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+      volumes:
+        - name: liferay-persistent-storage
+          persistentVolumeClaim:
+            claimName: liferay-volumeclaim
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
+
